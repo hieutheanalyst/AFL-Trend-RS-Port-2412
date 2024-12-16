@@ -1,0 +1,121 @@
+// 1
+// MA
+firstMALength = 10; //Optimize("firstMALength", 20, 5, 120, 5);
+firstMA = EMA(C, firstMALength);
+secondMALength = 10; //Optimize("secondMALength", 20, 5, 40, 5);
+secondMA = EMA(firstMA, secondMALength);
+
+// Volume
+volumeCondition = MA(V, 100) > 50000;
+
+/*
+// RS Calculation
+WatchlistName = "Backtest universe";
+wlnumber = CategoryFind(WatchlistName, cat = categoryWatchlist); 
+tickerlist =CategoryGetSymbols(cat, wlnumber);
+ListQty = StrCount(tickerlist, ",") + 1;
+
+rocPeriod = 40;// Param("ROC Periods", 40, 20, 80, 10);
+// Determine the quantity of stocks to rank
+StaticVarSet("UniListTotal", ListQty, True);
+if (Status("stocknum") == 0) 
+{
+    // Clear the static vars from last run
+    StaticVarRemove("RS_*");
+    StaticVarRemove("RSraw_*");
+    StaticVarRemove("RankRSraw*_");
+
+    // Generate the raw RS score for every stock and store in a static var
+    for (n = 0; (Symbol = StrExtract(tickerlist, n)) != ""; n++) 
+    { 
+        SetForeign(Symbol, 0); 
+        RSraw = 0;
+                
+        // Relative strength IBD style
+        ThreeMthRS  = 0.4 * (C / Ref(C, -rocPeriod));
+        SixMthRS    = 0.2 * (C / Ref(C, -(2 * rocPeriod)));
+        NineMthRS   = 0.2 * (C / Ref(C, -(3 * rocPeriod)));
+        TwelveMthRS = 0.2 * (C / Ref(C, -(4 * rocPeriod)));
+        RSraw = ThreeMthRS + SixMthRS + TwelveMthRS; 
+
+        RestorePriceArrays(); 
+        StaticVarSet("RSraw_" + Symbol, RSraw, True); 
+    }
+
+    // Rank the stocks using this extremely useful function!
+    StaticVarGenerateRanks("Rank", "RSraw_", 0, 1224);
+
+    // Convert the static var ranks generated into a percentile score
+    for (n = 0; (Symbol = StrExtract(tickerlist, n)) != ""; n++) 
+    {
+        Rank = StaticVarGet("RankRSraw_" + Symbol); 
+        RSpctile = 100 - 100 * Rank / ListQty; 
+        StaticVarSet("RS_" + Symbol, RSpctile, True);
+    }
+}
+
+// Plot the RS values for each stock
+Symbol = Name(); // Get the current stock symbol
+RS = StaticVarGet("RS_" + Symbol); // Retrieve the RS value for the current stock
+//Plot the RS time series
+
+MA_RS = MA(RS, 49);
+*/
+
+
+/*
+// 2. Buy Delayy
+// Buy-Sell condition
+BuySignal = Cross(firstMA, secondMA) AND volumeCondition; // Original Buy Signal
+Sell = Cross(secondMA, firstMA);
+
+
+n = Optimize("nDay Buy Delay", 0, 0, 10, 1);; // Delay in days
+inPosition = 0; // Track whether we are in a position
+Buy = 0; // Initialize the Buy array
+
+// Loop to manage BuySignal with delay
+for (i = 0; i < BarCount; i++) {
+    if (BuySignal[i] AND !inPosition) { // If there's a BuySignal and we are not inPosition
+        // Delay the BuySignal by 'n' days
+        if (i + n < BarCount) { // Ensure we don't exceed the array bounds
+            Buy[i + n] = 1; // Schedule Buy after n days
+            inPosition = 1; // Set inPosition to true
+        }
+    }
+    if (Sell[i]) { 
+        inPosition = 0; // Reset inPosition when we Sell
+    }
+}
+
+// Prevent overlapping signals
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+*/
+
+Buy = Cross(firstMA, secondMA) AND volumeCondition;
+Sell = Cross(secondMA, firstMA);
+// Prevent overlapping signals
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+
+// Plot the signals on the chart for visualization
+Plot(Close, "Close", colorDefault, styleCandle);
+Plot(firstMA, "First MA", colorred, styleLine);
+Plot(secondMA, "Second MA", colorAqua, styleLine);
+PlotShapes(IIf(Buy, shapeUpArrow, shapeNone), colorBrightGreen, 0, Low, -10);
+PlotShapes(IIf(Sell, shapeDownArrow, shapeNone), colorRed, 0, 1.03*High, 10);
+
+// Trade settings
+//NumberPositions = 20;
+//SetOption("MaxOpenPositions", NumberPositions);
+//SetPositionSize(100 / NumberPositions, spsPercentOfEquity);
+InitialEquity = 500000;
+CommissionAmount = 0.1;
+SetOption( "InitialEquity", InitialEquity );
+SetOption( "CommissionMode", 1 ); /*1 = percent, 2 = fixed */
+SetOption( "CommissionAmount", CommissionAmount );
+RoundLotSize = 100;
+//SetTradeDelays(1,1,1,1);
